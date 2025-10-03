@@ -1,0 +1,34 @@
+{
+  "name": "wikiglot",
+  "version": "1.0.0",
+  "description": "Simple, fast translation library using English Wiktionary for English, French, and Spanish",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "npx tsx examples/test-extensive.ts"
+  },
+  "keywords": [
+    "translation",
+    "wiktionary",
+    "dictionary",
+    "english",
+    "french",
+    "spanish",
+    "translate"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/node-fetch": "^2.6.11",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
