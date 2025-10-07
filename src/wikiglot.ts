@@ -21,6 +21,16 @@ interface WiktionaryResponse {
   };
 }
 
+interface WiktionarySearchResponse {
+  query?: {
+    search: Array<{
+      title: string;
+      pageid: number;
+      snippet: string;
+    }>;
+  };
+}
+
 /**
  * Simple translation client using English Wiktionary
  * Supports 10 languages: English, Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish
@@ -35,7 +45,7 @@ export class Wikiglot {
 
   constructor(options?: WikiglotOptions) {
     this.timeout = options?.timeout ?? 10000;
-    this.userAgent = options?.userAgent ?? "wikiglot/1.0.0 (https://github.com/yourproject/wikiglot)";
+    this.userAgent = options?.userAgent ?? "wikiglot/1.1.0 (https://github.com/yourproject/wikiglot)";
 
     if (options?.rateLimit) {
       this.rateLimiter = new RateLimiter(
@@ -86,8 +96,11 @@ export class Wikiglot {
     }
 
     const normalizedWord = word.replace(/\s+/g, '_');
-    const rawResult = await this.fetch(normalizedWord);
+    const fetchResult = await this.fetch(normalizedWord);
+    const rawResult = fetchResult.response;
     const html = rawResult.parse?.text["*"] || "";
+    const actualTitle = rawResult.parse?.title || normalizedWord;
+    const correctedFrom = fetchResult.correctedFrom;
 
     let translationsByType = [];
     let englishHtml = html;
@@ -119,9 +132,9 @@ export class Wikiglot {
         const redirectPage = detectTranslationRedirect(englishHtml, wordTypeName);
         if (redirectPage) {
           try {
-            const redirectHtml = await this.fetch(redirectPage);
+            const redirectFetchResult = await this.fetch(redirectPage);
             const redirectTranslations = parseTranslationRedirectPage(
-              redirectHtml.parse?.text["*"] || "",
+              redirectFetchResult.response.parse?.text["*"] || "",
               targetLanguage,
               wordTypeName.toLowerCase()
             );
@@ -197,16 +210,147 @@ export class Wikiglot {
     // Extract pronunciation
     const pronunciation = extractPronunciation(sourceLanguage === 'en' ? englishHtml : html);
 
-    return {
+    // ACCENT CORRECTION FALLBACK
+    // If no translations found for target language, try searching for accent-corrected version.
+    // This handles common cases like:
+    // - "azucar" (doesn't exist) → finds "azúcar" (Spanish)
+    // - "revolucion" (exists for Esperanto) → finds "revolución" (Spanish)
+    // - "cafe" (exists for English) → finds "café" (Portuguese)
+    if (translationsByType.length === 0 && !correctedFrom && !skipVerbFormLookup) {
+      const suggestions = await this.searchSuggestions(normalizedWord);
+      const correctedWord = this.filterBestMatch(suggestions, normalizedWord);
+
+      if (correctedWord && correctedWord !== normalizedWord) {
+        // Retry with corrected word
+        try {
+          const retryResult = await this.translateEng(
+            correctedWord,
+            sourceLanguage,
+            targetLanguage,
+            true // Skip verb form lookup on retry to avoid infinite loops
+          );
+
+          // If retry found translations, use those results with correction metadata
+          if (retryResult.translationsByType.length > 0) {
+            return {
+              ...retryResult,
+              searchedFor: normalizedWord,
+              foundAs: correctedWord
+            };
+          }
+        } catch (error) {
+          // Continue with empty results if retry also fails
+        }
+      }
+    }
+
+    const result: TranslationResult = {
       word,
       sourceLanguage,
       targetLanguage,
       translationsByType,
       pronunciation
     };
+
+    // Add correction metadata if word was auto-corrected
+    if (correctedFrom) {
+      result.searchedFor = correctedFrom;
+      result.foundAs = actualTitle;
+    }
+
+    return result;
   }
 
-  private async fetch(word: string): Promise<WiktionaryResponse> {
+  /**
+   * Search for word suggestions using Wiktionary's search API
+   * Used as fallback when direct page lookup fails
+   */
+  private async searchSuggestions(word: string): Promise<string[]> {
+    if (this.rateLimiter) {
+      await this.rateLimiter.acquire();
+    }
+
+    const url = `${this.protocol}://en.${this.api}?action=query&list=search&srsearch=${encodeURIComponent(word)}&srnamespace=0&srlimit=10&format=json`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        return [];
+      }
+
+      const data = await res.json() as WiktionarySearchResponse;
+
+      if (!data.query?.search) {
+        return [];
+      }
+
+      return data.query.search.map(result => result.title);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      // Don't throw on search failure, just return empty array
+      return [];
+    }
+  }
+
+  /**
+   * Filter search suggestions to find the best match
+   * Prefers single-word entries that match the original query (accent-insensitive)
+   * When multiple matches exist, prefers the one with accents (more specific)
+   */
+  private filterBestMatch(suggestions: string[], originalWord: string): string | null {
+    if (suggestions.length === 0) return null;
+
+    // Normalize for comparison (strip accents, lowercase)
+    const normalize = (str: string): string => {
+      return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    };
+
+    const hasAccents = (str: string): boolean => {
+      return str !== str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    };
+
+    const normalizedOriginal = normalize(originalWord);
+    const originalHasAccents = hasAccents(originalWord);
+
+    // Filter to single words only (no spaces)
+    const singleWords = suggestions.filter(s => !s.includes(' '));
+
+    // Find all accent-insensitive matches
+    const matches = singleWords.filter(s => normalize(s) === normalizedOriginal);
+
+    if (matches.length === 0) {
+      // No matches - return first single word if available
+      return singleWords[0] || null;
+    }
+
+    if (matches.length === 1) {
+      return matches[0];
+    }
+
+    // Multiple matches - prefer accented version if original has no accents
+    if (!originalHasAccents) {
+      const accentedMatch = matches.find(m => hasAccents(m));
+      if (accentedMatch) return accentedMatch;
+    }
+
+    // Otherwise return first match
+    return matches[0];
+  }
+
+  private async fetch(word: string, attemptCorrection = true): Promise<{ response: WiktionaryResponse; correctedFrom?: string }> {
     if (this.rateLimiter) {
       await this.rateLimiter.acquire();
     }
@@ -227,6 +371,21 @@ export class Wikiglot {
 
       if (!res.ok) {
         if (res.status === 404) {
+          // Try search suggestions as fallback
+          if (attemptCorrection) {
+            const suggestions = await this.searchSuggestions(word);
+            const correctedWord = this.filterBestMatch(suggestions, word);
+
+            if (correctedWord && correctedWord !== word) {
+              // Retry with corrected word, but don't attempt correction again
+              const result = await this.fetch(correctedWord, false);
+              return {
+                response: result.response,
+                correctedFrom: word
+              };
+            }
+          }
+
           throw new WikiglotNotFoundError(word);
         }
         throw new WikiglotError(`HTTP ${res.status}: ${res.statusText}`, res.status);
@@ -235,10 +394,27 @@ export class Wikiglot {
       const data = await res.json() as WiktionaryResponse;
 
       if (data.error) {
+        // ACCENT CORRECTION FALLBACK (Page doesn't exist)
+        // When a page doesn't exist (e.g., "azucar"), search for similar pages
+        // and try the best match (e.g., "azúcar")
+        if (data.error.code === 'missingtitle' && attemptCorrection) {
+          const suggestions = await this.searchSuggestions(word);
+          const correctedWord = this.filterBestMatch(suggestions, word);
+
+          if (correctedWord && correctedWord !== word) {
+            // Retry with corrected word, but don't attempt correction again to avoid loops
+            const result = await this.fetch(correctedWord, false);
+            return {
+              response: result.response,
+              correctedFrom: word
+            };
+          }
+        }
+
         throw new WikiglotError(data.error.info, undefined, data.error.code);
       }
 
-      return data;
+      return { response: data };
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
