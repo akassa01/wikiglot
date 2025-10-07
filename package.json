@@ -1,7 +1,7 @@
 {
   "name": "wikiglot",
   "version": "1.0.0",
-  "description": "Simple, fast translation library using English Wiktionary for English, French, and Spanish",
+  "description": "Simple, fast translation library using English Wiktionary with support for 10 languages",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -16,7 +16,15 @@
     "english",
     "french",
     "spanish",
-    "translate"
+    "italian",
+    "german",
+    "portuguese",
+    "swedish",
+    "indonesian",
+    "swahili",
+    "turkish",
+    "translate",
+    "multilingual"
   ],
   "author": "",
   "license": "MIT",

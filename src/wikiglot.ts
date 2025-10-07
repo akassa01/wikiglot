@@ -5,6 +5,7 @@ import { RateLimiter } from "./utils/rateLimit";
 import { parseEnglishWiktionaryForeignWord, detectEnglishVerbForm } from "./utils/enWiktionaryParser";
 import { extractPronunciation } from "./utils/pronunciationParser";
 import { parseWiktionaryTranslationsByType, detectTranslationRedirect, parseTranslationRedirectPage } from "./utils/htmlParser";
+import { LANGUAGE_NAMES } from "./utils/languageConfig";
 
 interface WiktionaryResponse {
   parse?: {
@@ -20,15 +21,10 @@ interface WiktionaryResponse {
   };
 }
 
-const LANGUAGE_NAMES: { [key: string]: string } = {
-  'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French'
-};
-
 /**
  * Simple translation client using English Wiktionary
- * Supports English, French, and Spanish translations
+ * Supports 10 languages: English, Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish
+ * Note: One language must be English (source or target)
  */
 export class Wikiglot {
   private api = "wiktionary.org/w/api.php";
@@ -50,13 +46,14 @@ export class Wikiglot {
   }
 
   /**
-   * Translate a word between English, French, and Spanish
+   * Translate a word between supported languages
    * Uses English Wiktionary as the source
    *
    * @param word - The word to translate
-   * @param sourceLanguage - Source language code: "en", "es", or "fr"
-   * @param targetLanguage - Target language code: "en", "es", or "fr"
+   * @param sourceLanguage - Source language code (en, es, fr, it, de, pt, sv, id, sw, tr)
+   * @param targetLanguage - Target language code (en, es, fr, it, de, pt, sv, id, sw, tr)
    * @returns Translation result with translations organized by word type
+   * @note One language must be English (source or target)
    */
   async translate(
     word: string,
@@ -73,8 +70,10 @@ export class Wikiglot {
     skipVerbFormLookup = false
   ): Promise<TranslationResult> {
     // Validate languages
-    if (!['en', 'es', 'fr'].includes(sourceLanguage) || !['en', 'es', 'fr'].includes(targetLanguage)) {
-      throw new WikiglotError('Only English (en), Spanish (es), and French (fr) are supported');
+    const supportedLanguages = Object.keys(LANGUAGE_NAMES);
+    if (!supportedLanguages.includes(sourceLanguage) || !supportedLanguages.includes(targetLanguage)) {
+      const langList = supportedLanguages.map(code => `${LANGUAGE_NAMES[code]} (${code})`).join(', ');
+      throw new WikiglotError(`Only ${langList} are supported`);
     }
 
     if (sourceLanguage === targetLanguage) {

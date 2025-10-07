@@ -1,10 +1,10 @@
 # Wikiglot
 
-Simple, fast translation library using English Wiktionary for English, French, and Spanish.
+Simple, fast translation library using English Wiktionary with support for 10 languages.
 
 ## Features
 
-- ✅ Translate between English, French, and Spanish
+- ✅ Translate between English and 9 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish)
 - ✅ Automatic verb form detection and base verb translation
 - ✅ Pronunciation (IPA) extraction
 - ✅ Organized by word type (noun, verb, adjective, etc.)
@@ -68,8 +68,8 @@ Translate a word between supported languages.
 
 **Parameters:**
 - `word: string` - The word to translate
-- `sourceLanguage: 'en' | 'es' | 'fr'` - Source language code
-- `targetLanguage: 'en' | 'es' | 'fr'` - Target language code
+- `sourceLanguage: string` - Source language code (see supported languages below)
+- `targetLanguage: string` - Target language code (see supported languages below)
 
 **Returns:** `Promise<TranslationResult>`
 
@@ -141,6 +141,13 @@ await translator.translate('world', 'en', 'fr');
 - English (`en`)
 - Spanish (`es`)
 - French (`fr`)
+- Italian (`it`)
+- German (`de`)
+- Portuguese (`pt`)
+- Swedish (`sv`)
+- Indonesian (`id`)
+- Swahili (`sw`)
+- Turkish (`tr`)
 
 **Note:** Currently, one of the languages must be English (source or target) as the library uses English Wiktionary.
 

@@ -1,9 +1,17 @@
 /**
  * Language name mappings for English Wiktionary
- * Wikiglot only uses English Wiktionary and supports en/es/fr
+ * Wikiglot uses English Wiktionary and supports 10 languages
+ * Note: One language must be English (source or target) for translations to work
  */
 export const LANGUAGE_NAMES: { [key: string]: string } = {
   'en': 'English',
   'es': 'Spanish',
-  'fr': 'French'
+  'fr': 'French',
+  'it': 'Italian',
+  'de': 'German',
+  'pt': 'Portuguese',
+  'sv': 'Swedish',
+  'id': 'Indonesian',
+  'sw': 'Swahili',
+  'tr': 'Turkish',
 };
