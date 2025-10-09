@@ -35,6 +35,20 @@ export interface TranslationResult {
   /** IPA pronunciation, if available */
   pronunciation?: string;
   /**
+   * Romanization/transliteration of the headword from the page title.
+   * For character-based languages (Arabic, Korean, Mandarin, Cantonese, etc.),
+   * this provides the Latin script representation.
+   * @example
+   * // Arabic
+   * const result = await translator.translate('مرحبا', 'ar', 'en');
+   * console.log(result.headwordTransliteration); // "marḥaban"
+   *
+   * // Korean
+   * const result = await translator.translate('안녕하세요', 'ko', 'en');
+   * console.log(result.headwordTransliteration); // "annyeonghaseyo"
+   */
+  headwordTransliteration?: string;
+  /**
    * Original query if accent correction was applied.
    * e.g., "azucar" when the user searched for "azucar" but found "azúcar"
    * @example

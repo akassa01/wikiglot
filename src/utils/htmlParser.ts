@@ -67,6 +67,7 @@ export function parseWiktionaryTranslationsByType(
     { key: 'conjunction', name: 'Conjunction' },
     { key: 'interjection', name: 'Interjection' },
     { key: 'numeral', name: 'Numeral' },
+    { key: 'phrase', name: 'Phrase' },
   ];
 
   for (const type of wordTypes) {

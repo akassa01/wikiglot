@@ -20,8 +20,13 @@ function decodeHTMLEntities(text: string): string {
  * This is used when translating between English and another language using en.wiktionary.org
  * Structure: Language (h2) -> Etymology (h3) -> Word Type (h3 or h4) -> Definition list with English translations
  *
+ * NOTE: Chinese pages often use a different structure without word type headings (h3/h4).
+ * Instead they use "Definitions" sections with complex table structures. This parser works
+ * for Chinese phrases/expressions but has limited coverage for individual characters.
+ * See https://github.com/yourproject/wikiglot/issues for planned improvements.
+ *
  * @param html - The HTML content from English Wiktionary
- * @param sourceLanguage - The source language name (e.g., "Spanish", "French", "Latin")
+ * @param sourceLanguage - The source language name (e.g., "Spanish", "French", "Latin", "Chinese")
  * @returns Array of translations grouped by word type with English meanings
  */
 export function parseEnglishWiktionaryForeignWord(

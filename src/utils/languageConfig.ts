@@ -1,6 +1,6 @@
 /**
  * Language name mappings for English Wiktionary
- * Wikiglot uses English Wiktionary and supports 10 languages
+ * Wikiglot uses English Wiktionary and supports 13 languages
  * Note: One language must be English (source or target) for translations to work
  */
 export const LANGUAGE_NAMES: { [key: string]: string } = {
@@ -14,4 +14,7 @@ export const LANGUAGE_NAMES: { [key: string]: string } = {
   'id': 'Indonesian',
   'sw': 'Swahili',
   'tr': 'Turkish',
+  'ar': 'Arabic',
+  'ko': 'Korean',
+  'zh': 'Chinese',
 };
