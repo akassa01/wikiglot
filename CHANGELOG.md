@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-10-09
+
+### Added
+- **Japanese Language Support** (`ja`): Full translation support between Japanese and English
+  - Automatic romaji romanization extraction (e.g., こんにちは → "konnichiwa")
+  - Transliterations available in translation objects
+  - Script detection for Hiragana, Katakana, and Kanji
+  - Pronunciation support
+  - Reverse transliteration search (romaji → Japanese)
+
+### Changed
+- Increased supported languages from 13 to 14
+- Updated headword parser to handle Japanese page structure with kanji tables
+- Improved transliteration extraction regex for better handling of nested HTML tags
+- Increased header section scanning size to accommodate Japanese pages
+
+### Fixed
+- Improved regex pattern in headword parser to correctly match transliterations with nested anchor tags
+- Fixed word boundary detection in language code matching
+
+### Examples
+```typescript
+// Japanese to English with romaji
+const result = await translator.translate('こんにちは', 'ja', 'en');
+// Returns: { headwordTransliteration: 'konnichiwa', translations: [{ translation: 'hello', ... }] }
+
+// English to Japanese with transliteration
+const result = await translator.translate('hello', 'en', 'ja');
+// Returns: { translations: [{ translation: 'こんにちは', transliteration: 'konnichiwa', ... }] }
+
+// Reverse search: Find Japanese word from romaji
+const suggestions = await translator.searchByTransliteration('konnichiwa', 'ja');
+// Returns: ['こんにちは', '今日は', ...]
+```
+
 ## [1.2.0] - 2025-10-09
 
 ### Added

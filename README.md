@@ -1,11 +1,11 @@
 # Wikiglot
 
-Simple, fast translation library using English Wiktionary with support for 13 languages.
+Simple, fast translation library using English Wiktionary with support for 14 languages.
 
 ## Features
 
-- ✅ Translate between English and 12 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese)
-- ✅ **Headword transliteration** - Automatic romanization extraction for character-based languages (Arabic, Korean, Chinese)
+- ✅ Translate between English and 13 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese, Japanese)
+- ✅ **Headword transliteration** - Automatic romanization extraction for character-based languages (Arabic, Korean, Chinese, Japanese)
 - ✅ **Automatic accent correction** - Forgiving search that finds "azúcar" when you type "azucar"
 - ✅ Automatic verb form detection and base verb translation
 - ✅ Pronunciation (IPA) extraction
@@ -144,6 +144,13 @@ console.log(koreanResult.headwordTransliteration); // "annyeonghaseyo"
 console.log(koreanResult.translationsByType);
 // [{ wordType: 'phrase', translations: [{ translation: 'hello', ... }] }]
 
+// Japanese → English
+const japaneseResult = await translator.translate('こんにちは', 'ja', 'en');
+
+console.log(japaneseResult.headwordTransliteration); // "konnichiwa"
+console.log(japaneseResult.translationsByType);
+// [{ wordType: 'interjection', translations: [{ translation: 'hello', ... }] }]
+
 // English → Arabic (translations may include transliterations)
 const enToArResult = await translator.translate('hello', 'en', 'ar');
 console.log(enToArResult.translationsByType[0].translations);
@@ -169,6 +176,10 @@ if (suggestions.length > 0) {
 // Find Arabic word from romanization
 const arabicSuggestions = await translator.searchByTransliteration('shukran', 'ar');
 // Returns: ['شكرا', ...]
+
+// Find Japanese word from romanization
+const japaneseSuggestions = await translator.searchByTransliteration('konnichiwa', 'ja');
+// Returns: ['こんにちは', ...]
 
 // Works for any romanization
 const search = await translator.searchByTransliteration('marhaban');
@@ -260,6 +271,7 @@ await translator.translate('world', 'en', 'fr');
 - Arabic (`ar`) - with automatic romanization
 - Korean (`ko`) - with automatic romanization
 - Mandarin Chinese (`zh`) - with automatic Pinyin romanization
+- Japanese (`ja`) - with automatic romaji romanization
 
 **Note:** Currently, one of the languages must be English (source or target) as the library uses English Wiktionary.
 
