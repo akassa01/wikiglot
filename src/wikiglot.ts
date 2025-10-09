@@ -34,7 +34,7 @@ interface WiktionarySearchResponse {
 
 /**
  * Simple translation client using English Wiktionary
- * Supports 13 languages: English, Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese
+ * Supports 14 languages: English, Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese, Japanese
  * Note: One language must be English (source or target)
  */
 export class Wikiglot {
@@ -61,8 +61,8 @@ export class Wikiglot {
    * Uses English Wiktionary as the source
    *
    * @param word - The word to translate
-   * @param sourceLanguage - Source language code (en, es, fr, it, de, pt, sv, id, sw, tr, ar, ko)
-   * @param targetLanguage - Target language code (en, es, fr, it, de, pt, sv, id, sw, tr, ar, ko)
+   * @param sourceLanguage - Source language code (en, es, fr, it, de, pt, sv, id, sw, tr, ar, ko, zh, ja)
+   * @param targetLanguage - Target language code (en, es, fr, it, de, pt, sv, id, sw, tr, ar, ko, zh, ja)
    * @returns Translation result with translations organized by word type
    * @note One language must be English (source or target)
    */
@@ -117,17 +117,20 @@ export class Wikiglot {
       if (languageName) {
         // Filter to suggestions that are likely in the target language
         // For character-based languages, filter to non-Latin characters
-        if (language === 'ar' || language === 'ko' || language === 'zh' || language === 'yue') {
+        if (language === 'ar' || language === 'ko' || language === 'zh' || language === 'yue' || language === 'ja') {
           return suggestions.filter(word => {
             // Arabic: contains Arabic script (U+0600 to U+06FF)
             // Korean: contains Hangul (U+AC00 to U+D7AF) or Hangul Jamo (U+1100 to U+11FF)
             // Chinese: contains CJK Unified Ideographs (U+4E00 to U+9FFF)
+            // Japanese: contains Hiragana (U+3040 to U+309F), Katakana (U+30A0 to U+30FF), or CJK (U+4E00 to U+9FFF)
             if (language === 'ar') {
               return /[\u0600-\u06FF]/.test(word);
             } else if (language === 'ko') {
               return /[\uAC00-\uD7AF\u1100-\u11FF]/.test(word);
             } else if (language === 'zh' || language === 'yue') {
               return /[\u4E00-\u9FFF]/.test(word);
+            } else if (language === 'ja') {
+              return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(word);
             }
             return true;
           });
@@ -277,7 +280,7 @@ export class Wikiglot {
 
     // Extract headword transliteration for character-based languages
     // Only extract when translating FROM character-based languages TO another language
-    const characterBasedLanguages = ['ar', 'ko', 'zh']; // Arabic, Korean, Chinese (Mandarin)
+    const characterBasedLanguages = ['ar', 'ko', 'zh', 'ja']; // Arabic, Korean, Chinese (Mandarin), Japanese
     let headwordTransliteration: string | undefined;
     if (characterBasedLanguages.includes(sourceLanguage)) {
       const sourceLanguageName = LANGUAGE_NAMES[sourceLanguage];

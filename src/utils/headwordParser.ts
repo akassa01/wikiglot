@@ -16,16 +16,17 @@ function decodeHTMLEntities(text: string): string {
 /**
  * Extract headword transliteration from Wiktionary page
  *
- * For character-based languages (Arabic, Korean, Mandarin, Cantonese, etc.),
+ * For character-based languages (Arabic, Korean, Mandarin, Cantonese, Japanese, etc.),
  * Wiktionary shows both the native script and romanization in the page header.
  *
  * Pattern: <native script> • (<romanization>)
  * Examples:
  * - Arabic: "مَرْحَبًا • (marḥaban)"
  * - Korean: "안녕하세요? • (annyeonghaseyo?)"
+ * - Japanese: "こんにちは • (konnichiwa)"
  *
  * @param html - The HTML content from Wiktionary
- * @param languageName - The language name (e.g., "Arabic", "Korean")
+ * @param languageName - The language name (e.g., "Arabic", "Korean", "Japanese")
  * @returns The romanization/transliteration if found, undefined otherwise
  */
 export function extractHeadwordTransliteration(
@@ -50,8 +51,9 @@ export function extractHeadwordTransliteration(
 
   const languageSection = html.slice(langStart, langEnd);
 
-  // First 2000 characters are usually the header section with the headword
-  const headerSection = languageSection.slice(0, 2000);
+  // Use the first 10000 characters or full section (whichever is smaller)
+  // Some languages like Japanese have kanji tables and other content before the headword
+  const headerSection = languageSection.slice(0, Math.min(10000, languageSection.length));
 
   // Pattern 1: Look for <strong class="Latn headword"> or similar with bullet point
   // Example: <strong class="Arab headword">مَرْحَبًا</strong> • <span>(<i>marḥaban</i>)</span>
@@ -87,15 +89,20 @@ export function extractHeadwordTransliteration(
                    languageName === 'Korean' ? 'ko' :
                    languageName === 'Chinese' ? 'zh' :
                    languageName === 'Mandarin' ? 'zh' :
-                   languageName === 'Cantonese' ? 'yue' : '';
+                   languageName === 'Cantonese' ? 'yue' :
+                   languageName === 'Japanese' ? 'ja' : '';
 
   if (langCode) {
     // Try various tag types (span, b, strong, i)
-    const latinRegex = new RegExp(`<(?:span|b|strong|i)[^>]*lang="${langCode}-Latn"[^>]*>([^<]+)<\/(?:span|b|strong|i)>`, 'i');
+    // Look for lang="xx-Latn" attribute (could have other attributes before/after)
+    // The content might contain nested tags (like <a>), so we use a non-greedy match
+    const latinRegex = new RegExp(`<(span|b|strong|i)([^>]*)\\blang="${langCode}-Latn"([^>]*)>(.*?)<\/\\1>`, 'i');
     const latinMatch = headerSection.match(latinRegex);
 
     if (latinMatch) {
-      const transliteration = decodeHTMLEntities(latinMatch[1].trim());
+      // Extract text from within the tag, removing any nested HTML tags
+      let transliteration = latinMatch[4].replace(/<[^>]+>/g, '');
+      transliteration = decodeHTMLEntities(transliteration.trim());
       if (transliteration && transliteration.length > 0) {
         return transliteration;
       }
