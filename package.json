@@ -1,7 +1,7 @@
 {
   "name": "wikiglot",
-  "version": "1.1.0",
-  "description": "Simple, fast translation library using English Wiktionary with automatic accent correction",
+  "version": "1.2.0",
+  "description": "Simple, fast translation library using English Wiktionary with support for 13 languages including Arabic, Korean, and Chinese",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -23,8 +23,15 @@
     "indonesian",
     "swahili",
     "turkish",
+    "arabic",
+    "korean",
+    "chinese",
+    "mandarin",
+    "pinyin",
     "translate",
-    "multilingual"
+    "multilingual",
+    "transliteration",
+    "romanization"
   ],
   "author": "",
   "license": "MIT",

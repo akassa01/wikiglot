@@ -1,14 +1,15 @@
 # Wikiglot
 
-Simple, fast translation library using English Wiktionary with support for 10 languages.
+Simple, fast translation library using English Wiktionary with support for 13 languages.
 
 ## Features
 
-- ✅ Translate between English and 9 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish)
+- ✅ Translate between English and 12 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese)
+- ✅ **Headword transliteration** - Automatic romanization extraction for character-based languages (Arabic, Korean, Chinese)
 - ✅ **Automatic accent correction** - Forgiving search that finds "azúcar" when you type "azucar"
 - ✅ Automatic verb form detection and base verb translation
 - ✅ Pronunciation (IPA) extraction
-- ✅ Organized by word type (noun, verb, adjective, etc.)
+- ✅ Organized by word type (noun, verb, adjective, phrase, etc.)
 - ✅ Built-in rate limiting
 - ✅ Zero dependencies (except node-fetch)
 - ✅ TypeScript support
@@ -124,6 +125,63 @@ console.log(result.translationsByType[0].translations);
 // [{ translation: 'hello', meaning: 'greeting' }, ...]
 ```
 
+### Character-Based Languages with Transliteration
+
+For Arabic, Korean, and other character-based languages, Wikiglot automatically extracts romanization:
+
+```typescript
+// Arabic → English
+const arabicResult = await translator.translate('مرحبا', 'ar', 'en');
+
+console.log(arabicResult.headwordTransliteration); // "marḥaban"
+console.log(arabicResult.translationsByType);
+// [{ wordType: 'interjection', translations: [{ translation: 'hello', ... }] }]
+
+// Korean → English
+const koreanResult = await translator.translate('안녕하세요', 'ko', 'en');
+
+console.log(koreanResult.headwordTransliteration); // "annyeonghaseyo"
+console.log(koreanResult.translationsByType);
+// [{ wordType: 'phrase', translations: [{ translation: 'hello', ... }] }]
+
+// English → Arabic (translations may include transliterations)
+const enToArResult = await translator.translate('hello', 'en', 'ar');
+console.log(enToArResult.translationsByType[0].translations);
+// [{ translation: 'مَرْحَبًا', transliteration: 'marḥaban', meaning: 'greeting' }, ...]
+```
+
+### Reverse Transliteration Search
+
+Search for character-based words when you only know the romanization:
+
+```typescript
+// Find Korean word from romanization
+const suggestions = await translator.searchByTransliteration('annyeonghaseyo', 'ko');
+// Returns: ['안녕하세요', '안녕', '안녕하다', ...]
+
+// Translate the result
+if (suggestions.length > 0) {
+  const result = await translator.translate(suggestions[0], 'ko', 'en');
+  console.log(result.translationsByType[0].translations[0].translation);
+  // Output: "How are you?"
+}
+
+// Find Arabic word from romanization
+const arabicSuggestions = await translator.searchByTransliteration('shukran', 'ar');
+// Returns: ['شكرا', ...]
+
+// Works for any romanization
+const search = await translator.searchByTransliteration('marhaban');
+// Returns suggestions for any language
+```
+
+**Limitations:**
+- Accuracy depends on Wiktionary's search indexing
+- Some romanizations may not return results even if the word exists on Wiktionary
+- Works best with standard romanizations (Revised Romanization for Korean, Pinyin for Chinese)
+- Arabic may require diacritics for better results (e.g., "salām" works better than "salam")
+- Returns empty array if no matches found in the target language's script
+
 ### Accent Correction
 
 Wikiglot automatically corrects missing accents and handles common misspellings. This is especially useful when users search from external platforms where typing accents is difficult.
@@ -199,8 +257,18 @@ await translator.translate('world', 'en', 'fr');
 - Indonesian (`id`)
 - Swahili (`sw`)
 - Turkish (`tr`)
+- Arabic (`ar`) - with automatic romanization
+- Korean (`ko`) - with automatic romanization
+- Mandarin Chinese (`zh`) - with automatic Pinyin romanization
 
 **Note:** Currently, one of the languages must be English (source or target) as the library uses English Wiktionary.
+
+**Chinese Language Limitations:**
+- Chinese → English works best for common phrases/expressions (e.g., 你好, 再见)
+- Individual character translations may have limited coverage due to Wiktionary's page structure
+- English → Chinese works well for all words with Pinyin transliterations
+- Pinyin search is fully functional
+- Full character support planned for future release
 
 ## Error Handling
 
