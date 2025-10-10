@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-10-10
+
+### Fixed
+- **Korean Romanization**: Fixed extraction to use Revised Romanization from pronunciation tables instead of grammatical terms
+  - Now correctly extracts "annyeonghaseyo" instead of "haeyoche" for 안녕하세요
+  - Added specific pattern for Korean `<th>Revised Romanization</th>` table structure
+  - Excluded Korean from `lang="ko-Latn"` fallback to prevent extracting grammar terminology
+- **Arabic Romanization**: Fixed bullet point pattern to handle linked bullets (`<a>•</a>`)
+  - Now correctly extracts "marḥaban" for مرحبا
+  - Increased header section limit from 10,000 to 30,000 characters to find romanization in pages with phrasebook boxes
+- **Chinese Romanization**: Added pinyin extraction from Chinese pronunciation sections
+  - New pattern extracts pinyin from `<span class="...pinyin..."><a>pinyin</a></span>` structure
+  - Automatically removes spaces between syllables (e.g., "nǐ hǎo" → "nǐhǎo")
+  - Works for traditional Chinese characters (e.g., 你好 → "nǐhǎo", 朋友 → "péngyou")
+  - Note: Simplified characters that redirect to traditional forms won't have romanization
+- **Japanese Romanization**: Added extraction from `<span class="mention-tr tr">` tags
+  - Now extracts romanization for Japanese words (e.g., こんにちは → "konnichiha")
+  - Uses strict Hepburn romanization as provided by English Wiktionary
+
+### Changed
+- Increased header section scanning from 10,000 to 30,000 characters to accommodate pages with large infoboxes and tables
+- Enhanced bullet point pattern to match both plain bullets (•) and linked bullets (`<a>•</a>`)
+- Improved regex patterns to handle nested HTML tags in pronunciation sections
+
+### Technical Details
+- Added Pattern 2a: Korean Revised Romanization table extraction
+- Added Pattern 2b: Chinese pinyin extraction with space normalization
+- Added Pattern 3: `mention-tr` tag extraction for Japanese
+- Updated Pattern 1: Bullet point pattern now handles linked bullets
+- Updated Pattern 5: Removed Korean from lang-Latn fallback
+
+### Examples
+```typescript
+// Korean - now extracts correct Revised Romanization
+const ko = await translator.translate('안녕하세요', 'ko', 'en');
+console.log(ko.headwordTransliteration); // "annyeonghaseyo" (was "haeyoche")
+
+// Arabic - now finds romanization in pages with long headers
+const ar = await translator.translate('مرحبا', 'ar', 'en');
+console.log(ar.headwordTransliteration); // "marḥaban"
+
+// Chinese - extracts pinyin for traditional characters
+const zh = await translator.translate('你好', 'zh', 'en');
+console.log(zh.headwordTransliteration); // "nǐhǎo"
+
+// Japanese - extracts romaji from mention tags
+const ja = await translator.translate('こんにちは', 'ja', 'en');
+console.log(ja.headwordTransliteration); // "konnichiha"
+```
+
 ## [1.2.1] - 2025-10-09
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "wikiglot",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Simple, fast translation library using English Wiktionary with support for 14 languages including Arabic, Korean, Chinese, and Japanese",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
