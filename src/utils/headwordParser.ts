@@ -51,15 +51,17 @@ export function extractHeadwordTransliteration(
 
   const languageSection = html.slice(langStart, langEnd);
 
-  // Use the first 10000 characters or full section (whichever is smaller)
+  // Use the first 30000 characters or full section (whichever is smaller)
   // Some languages like Japanese have kanji tables and other content before the headword
-  const headerSection = languageSection.slice(0, Math.min(10000, languageSection.length));
+  // Arabic and other languages may have phrasebook boxes and inflection tables before headword
+  const headerSection = languageSection.slice(0, Math.min(30000, languageSection.length));
 
   // Pattern 1: Look for <strong class="Latn headword"> or similar with bullet point
   // Example: <strong class="Arab headword">مَرْحَبًا</strong> • <span>(<i>marḥaban</i>)</span>
   // The romanization appears after the bullet point (•) in parentheses
+  // Note: The bullet might be inside a link tag: <a>•</a>
   // We want to extract all text within the parentheses, including from nested tags
-  const bulletPattern = /•\s*(?:<[^>]+>)*\(((?:<[^>]+>|[^<)])+)\)/;
+  const bulletPattern = /(?:•|<a[^>]*>•<\/a>)\s*(?:<[^>]+>)*\(((?:<[^>]+>|[^<)])+)\)/;
   const bulletMatch = headerSection.match(bulletPattern);
 
   if (bulletMatch) {
@@ -71,7 +73,49 @@ export function extractHeadwordTransliteration(
     }
   }
 
-  // Pattern 2: Look for romanization in <span class="...romanization...">
+  // Pattern 2a: Look for Revised Romanization in Korean pronunciation tables
+  // Korean pages have a table with "Revised Romanization" in <th> and the romanization in <td class="IPA">
+  if (languageName === 'Korean') {
+    const revisedRomanizationRegex = /<th>Revised Romanization.*?<\/th>\s*<td[^>]*class="IPA"[^>]*>([^<]+)<\/td>/i;
+    const rrMatch = languageSection.match(revisedRomanizationRegex);
+
+    if (rrMatch) {
+      const transliteration = decodeHTMLEntities(rrMatch[1].trim());
+      if (transliteration && transliteration.length > 0) {
+        return transliteration;
+      }
+    }
+  }
+
+  // Pattern 2b: Look for pinyin in Chinese pronunciation sections
+  // Chinese pages have pinyin in <span class="...pinyin..."><a>pinyin</a></span>
+  if (languageName === 'Chinese' || languageName === 'Mandarin') {
+    const pinyinRegex = /<span[^>]*class="[^"]*pinyin[^"]*"[^>]*>.*?title="[^"]*">([^<]+)<\/a>/i;
+    const pinyinMatch = headerSection.match(pinyinRegex);
+
+    if (pinyinMatch) {
+      let transliteration = decodeHTMLEntities(pinyinMatch[1].trim());
+      // Remove spaces between syllables (e.g., "nǐ hǎo" -> "nǐhǎo")
+      transliteration = transliteration.replace(/\s+/g, '');
+      if (transliteration && transliteration.length > 0) {
+        return transliteration;
+      }
+    }
+  }
+
+  // Pattern 3: Look for <span class="mention-tr tr"> (common in Japanese, Chinese pages)
+  // Example: <span class="mention-tr tr">konnichiha</span>
+  const mentionTrRegex = /<span[^>]*class="[^"]*mention-tr[^"]*"[^>]*>([^<]+)<\/span>/i;
+  const mentionMatch = headerSection.match(mentionTrRegex);
+
+  if (mentionMatch) {
+    const transliteration = decodeHTMLEntities(mentionMatch[1].trim());
+    if (transliteration && transliteration.length > 0) {
+      return transliteration;
+    }
+  }
+
+  // Pattern 4: Look for romanization in <span class="...romanization...">
   // This is a fallback for pages that might use a different format
   const romanizationSpanRegex = /<span[^>]*class="[^"]*romanization[^"]*"[^>]*>([^<]+)<\/span>/i;
   const romanMatch = languageSection.match(romanizationSpanRegex);
@@ -83,10 +127,10 @@ export function extractHeadwordTransliteration(
     }
   }
 
-  // Pattern 3: Look for lang="xx-Latn" elements (Latin script for the language)
+  // Pattern 5: Look for lang="xx-Latn" elements (Latin script for the language)
   // Example: <span lang="ar-Latn">marḥaban</span> or <b lang="ar-Latn">marḥaban</b>
+  // NOTE: For Korean, skip this pattern as it often picks up grammatical terms instead of romanization
   const langCode = languageName === 'Arabic' ? 'ar' :
-                   languageName === 'Korean' ? 'ko' :
                    languageName === 'Chinese' ? 'zh' :
                    languageName === 'Mandarin' ? 'zh' :
                    languageName === 'Cantonese' ? 'yue' :
