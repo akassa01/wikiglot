@@ -46,7 +46,7 @@ export class Wikiglot {
 
   constructor(options?: WikiglotOptions) {
     this.timeout = options?.timeout ?? 10000;
-    this.userAgent = options?.userAgent ?? "wikiglot/1.1.0 (https://github.com/yourproject/wikiglot)";
+    this.userAgent = options?.userAgent ?? "wikiglot/1.2.3 (https://github.com/yourproject/wikiglot)";
 
     if (options?.rateLimit) {
       this.rateLimiter = new RateLimiter(

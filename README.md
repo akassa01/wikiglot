@@ -275,12 +275,13 @@ await translator.translate('world', 'en', 'fr');
 
 **Note:** Currently, one of the languages must be English (source or target) as the library uses English Wiktionary.
 
-**Chinese Language Limitations:**
-- Chinese → English works best for common phrases/expressions (e.g., 你好, 再见)
-- Individual character translations may have limited coverage due to Wiktionary's page structure
-- English → Chinese works well for all words with Pinyin transliterations
-- Pinyin search is fully functional
-- Full character support planned for future release
+**Chinese Language Notes:**
+- ✅ Chinese → English works for both individual characters and phrases (e.g., 狗 → "dog", 你好 → "hello", 谢谢 → "thanks")
+- ✅ English → Chinese works well for all words with Pinyin transliterations
+- ✅ Pinyin search is functional for common words
+- ✅ Automatic Pinyin extraction from both traditional and simplified characters
+- Note: Chinese character pages use a "Definitions" section without word type categorization, so word type defaults to "noun"
+- Note: Pinyin search accuracy depends on Wiktionary's search algorithm; some words may not be found via romanization
 
 ## Error Handling
 

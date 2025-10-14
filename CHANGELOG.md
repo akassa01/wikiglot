@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2025-10-14
+
+### Fixed
+- **Japanese Alternate Spelling Pages**: Fixed Japanese→English translations for alternate spelling pages (hiragana/katakana variants)
+  - Japanese word "こんにちは" (konnichiwa/hello) was not returning translations despite the page existing on Wiktionary
+  - Root cause: Pages for alternate spellings use a special `ja-see` template that redirects to the kanji version with a different HTML structure
+  - Added special handling to detect and parse `<table class="wikitable ja-see">` templates
+  - Extracts word types from `[type]` bracket patterns (e.g., `[interjection]`)
+  - Extracts English translations from wiki links within the redirect table
+  - Examples now working:
+    - こんにちは (konnichiwa) → "good day, good afternoon" ✓
+    - Other hiragana/katakana alternate spellings that redirect to kanji forms ✓
+- **Chinese Character Translations**: Fixed Chinese→English translations for individual characters and phrases
+  - Chinese character pages use a special "Definitions" h3 section instead of standard word type headings (Noun, Verb, etc.)
+  - Added parser to extract English translations from definition lists under `<h3 id="Definitions">`
+  - Two extraction patterns:
+    - Pattern 1: English word links like `<a href="/wiki/dog">dog</a>`
+    - Pattern 2: Plain English text before Chinese characters or parentheses
+  - Examples now working:
+    - 狗 (gǒu) → "dog" ✓
+    - 爱 (ài) → "love, treasure, value" ✓
+- **Chinese Simplified/Traditional Redirects**: Fixed `zh-see` template parsing for simplified Chinese redirects
+  - Many simplified Chinese words (like 谢谢) redirect to traditional forms (like 謝謝) using a `zh-see` template, similar to Japanese's `ja-see`
+  - Extended redirect format regex to match both `ja-see` and `zh-see` templates
+  - Extracts all English word links from the redirect table, filtering out Chinese characters and meta links
+  - Examples now working:
+    - 谢谢 (xièxie) → "thanks, thank you, thank" ✓
+    - 再见 (zàijiàn) → "goodbye, see you later, see" ✓
+
+### Changed
+- Enhanced `parseEnglishWiktionaryForeignWord()` to handle Chinese-specific page structures
+- Updated redirect format detection to support both Japanese (`ja-see`) and Chinese (`zh-see`) templates
+- Improved English word extraction with better filtering for Chinese characters and external links
+
+### Technical Details
+- Added special handling for `<h3 id="Definitions">Definitions</h3>` in Chinese sections
+- Chinese character pages default to 'noun' word type (most common for single characters)
+- Chinese phrase redirects default to 'interjection' word type (most common for expressions)
+- Two-stage English extraction: first tries linked words, then falls back to plain text extraction
+
+### Test Results
+- ✅ Japanese alternate spelling pages: working (こんにちは and other hiragana/katakana variants)
+- ✅ All 14 languages tested with "hello": all passing
+- ✅ All 8 Chinese translation tests now passing (was 4/8, now 8/8)
+- ✅ Chinese character translations: 4/4 passing
+- ✅ English → Chinese translations: 4/4 passing
+- ✅ Pinyin extraction: working for all tested words
+- ✅ Pinyin search: working for common words (nihao, xiexie, zaijian)
+- ✅ No regressions in other languages (Arabic, Korean, Spanish, French, etc.)
+
+### Examples
+```typescript
+// Japanese alternate spellings now work
+const hello = await translator.translate('こんにちは', 'ja', 'en');
+console.log(hello.translationsByType[0].translations[0].translation); // "good day"
+console.log(hello.headwordTransliteration); // "konnichiha"
+
+// Chinese characters now work
+const dog = await translator.translate('狗', 'zh', 'en');
+console.log(dog.translationsByType[0].translations[0].translation); // "dog"
+console.log(dog.headwordTransliteration); // "gǒu"
+
+// Simplified Chinese redirects now work
+const thanks = await translator.translate('谢谢', 'zh', 'en');
+console.log(thanks.translationsByType[0].translations[0].translation); // "thanks"
+
+const goodbye = await translator.translate('再见', 'zh', 'en');
+console.log(goodbye.translationsByType[0].translations[0].translation); // "goodbye"
+
+// Character with multiple meanings
+const love = await translator.translate('爱', 'zh', 'en');
+console.log(love.translationsByType[0].translations); // [{translation: "love", ...}, {translation: "treasure", ...}, ...]
+```
+
+### Known Limitations
+- Pinyin search doesn't work for all words (e.g., "gou") due to Wiktionary's search algorithm prioritizing exact matches over romanized searches
+- **Word type detection for Chinese characters**: Chinese character pages use a single "Definitions" h3 section without word type headings (no "Noun", "Verb", etc. as h3/h4/h5 elements). The parser defaults to "noun" since this is the most common category for single characters. The definitions themselves don't include word type indicators.
+- Some rare characters or dialectal words may have incomplete definitions on English Wiktionary
+
 ## [1.2.2] - 2025-10-10
 
 ### Fixed
