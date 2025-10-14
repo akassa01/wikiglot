@@ -53,8 +53,210 @@ export function parseEnglishWiktionaryForeignWord(
 
   const languageSection = html.slice(langStart, langEnd);
 
+  // Check for special redirect formats (e.g., Japanese ja-see template, Chinese zh-see template)
+  // Format: <table class="wikitable ja-see">...[interjection] <a href="/wiki/word">word</a>...
+  // Format: <table class="wikitable zh-see">...see 謝謝 ("<a href="/wiki/thanks">thanks</a>")...
+  // This is used for alternate spellings that redirect to the main entry
+  const redirectFormatMatch = languageSection.match(/<table[^>]*class="[^"]*(?:ja-see|zh-see)[^"]*"[^>]*>([\s\S]*?)<\/table>/i);
+  if (redirectFormatMatch) {
+    const tableContent = redirectFormatMatch[1];
+
+    // TWO DIFFERENT FORMATS:
+    // 1. Japanese ja-see: <span>[interjection]</span> <a href="/wiki/word">word</a>
+    // 2. Chinese zh-see: see 謝謝 ("<a href="/wiki/thanks">thanks</a>; <a href="/wiki/thank_you">thank you</a>")
+
+    // Try Japanese format first (with [word type] in brackets)
+    const definitionRegex = /<span[^>]*>[\s\S]*?\[([^\]]+)\][\s\S]*?<\/span>([\s\S]*?)(?=<\/td>|<\/dd>)/gi;
+    let defMatch;
+
+    while ((defMatch = definitionRegex.exec(tableContent)) !== null) {
+      const wordType = defMatch[1].trim().toLowerCase();
+      const definitionContent = defMatch[2];
+
+      // Extract English translations from links
+      const linkRegex = /<a[^>]*href="\/wiki\/([^"#]+)"[^>]*>([^<]+)<\/a>/g;
+      let linkMatch;
+      const englishWords: string[] = [];
+
+      while ((linkMatch = linkRegex.exec(definitionContent)) !== null) {
+        const word = linkMatch[2].trim();
+        if (!word.includes('Appendix:') && !word.includes('File:') && word.length > 0) {
+          englishWords.push(word);
+        }
+      }
+
+      if (englishWords.length > 0) {
+        // Extract the full meaning text (plain text after word type)
+        let meaningText = definitionContent.replace(/<[^>]+>/g, ' ');
+        meaningText = decodeHTMLEntities(meaningText).trim().replace(/\s+/g, ' ');
+        meaningText = meaningText.replace(/^:\s*/, ''); // Remove leading colon
+
+        const translations: TranslationWithMeaning[] = englishWords.map(word => ({
+          translation: word,
+          meaning: meaningText || englishWords.join(', ')
+        }));
+
+        result.push({
+          wordType,
+          translations
+        });
+      }
+    }
+
+    // If Japanese format didn't work, try Chinese zh-see format
+    // Pattern: see 謝謝 ("<a href="/wiki/thanks">thanks</a>; <a href="/wiki/thank_you">thank you</a>")
+    // Chinese zh-see templates show the definition inline in the redirect table
+    if (result.length === 0 && sourceLanguage === 'Chinese') {
+      // Extract ALL English word links from the zh-see table
+      // Simpler approach: just get all links and filter for English
+      const linkRegex = /<a[^>]*href="\/wiki\/([^"#]+)"[^>]*>([^<]+)<\/a>/g;
+      let linkMatch;
+      const englishWords: string[] = [];
+
+      while ((linkMatch = linkRegex.exec(tableContent)) !== null) {
+        const word = linkMatch[2].trim();
+        // Skip Chinese characters, external links, and meta links
+        if (!/[\u4E00-\u9FFF]/.test(word) &&
+            !linkMatch[1].includes('Appendix:') &&
+            !linkMatch[1].includes('File:') &&
+            !linkMatch[1].includes('http') &&
+            !linkMatch[1].includes('Simplified_Chinese') &&
+            !linkMatch[1].includes('Traditional_Chinese') &&
+            word.length > 0 &&
+            word.length < 50) {
+          englishWords.push(word);
+        }
+      }
+
+      if (englishWords.length > 0) {
+        // Extract meaning text from the table (strip HTML)
+        let meaningText = tableContent.replace(/<[^>]+>/g, ' ');
+        meaningText = decodeHTMLEntities(meaningText).trim().replace(/\s+/g, ' ');
+
+        // Clean up the meaning text - extract just the relevant part
+        const meaningMatch = meaningText.match(/see\s+\S+\s+\(([^)]+)\)/);
+        if (meaningMatch) {
+          meaningText = meaningMatch[1];
+        } else {
+          meaningText = englishWords.join(', ');
+        }
+
+        const translations: TranslationWithMeaning[] = englishWords.map(word => ({
+          translation: word,
+          meaning: meaningText
+        }));
+
+        // Default to interjection for Chinese phrases (most common for zh-see redirects)
+        result.push({
+          wordType: 'interjection',
+          translations
+        });
+      }
+    }
+
+    // If we found translations in the redirect format, return early
+    if (result.length > 0) {
+      return result;
+    }
+  }
+
   // Check if this is a verb form by looking for patterns in definitions
   const verbFormInfo = detectVerbForm(languageSection);
+
+  // SPECIAL HANDLING FOR CHINESE: Many Chinese character pages use "Definitions" section instead of word types
+  // Pattern: <h3 id="Definitions">Definitions</h3> followed by <ol><li>...</li></ol>
+  // The definitions include English translations embedded in the text
+  if (sourceLanguage === 'Chinese') {
+    const definitionsMatch = languageSection.match(/<h3[^>]*id="Definitions"[^>]*>Definitions<\/h3>/i);
+    if (definitionsMatch) {
+      const defStart = definitionsMatch.index!;
+      const restAfterDef = languageSection.slice(defStart + definitionsMatch[0].length);
+      const nextHeadingMatch = restAfterDef.match(/<h[345][^>]*id="/);
+      const defEnd = nextHeadingMatch ? defStart + definitionsMatch[0].length + nextHeadingMatch.index! : languageSection.length;
+      const definitionsSection = languageSection.slice(defStart, defEnd);
+
+      // Extract definitions from <ol><li> tags
+      const translations: TranslationWithMeaning[] = [];
+      const olMatch = definitionsSection.match(/<ol[^>]*>([\s\S]*?)<\/ol>/);
+
+      if (olMatch) {
+        const liRegex = /<li[^>]*>([\s\S]*?)(?=<\/li>|<ol>|<li>)/g;
+        let liMatch;
+
+        while ((liMatch = liRegex.exec(olMatch[1])) !== null) {
+          let definition = liMatch[1];
+
+          // Remove nested lists and complex structures
+          definition = definition.replace(/<ol[\s\S]*?<\/ol>/g, '');
+          definition = definition.replace(/<ul[\s\S]*?<\/ul>/g, '');
+          definition = definition.replace(/<div[\s\S]*?<\/div>/g, '');
+
+          // Extract English words from the definition
+          // Chinese definitions typically start with English translation(s) in plain text or links
+          // Pattern 1: English word links like <a href="/wiki/dog">dog</a>
+          const linkRegex = /<a[^>]*href="\/wiki\/([^"#]+)"[^>]*>([^<]+)<\/a>/g;
+          let linkMatch;
+          const englishWords: string[] = [];
+
+          while ((linkMatch = linkRegex.exec(definition)) !== null) {
+            const word = linkMatch[2].trim();
+            // Skip Chinese characters, appendix links, and meta links
+            if (!/[\u4E00-\u9FFF]/.test(word) &&
+                !word.includes('Appendix:') &&
+                !word.includes('File:') &&
+                !word.includes('Classifier:') &&
+                word.length > 0) {
+              englishWords.push(word);
+            }
+          }
+
+          // Pattern 2: Plain English text at the start of the definition (before any Chinese characters or parentheses)
+          // Example: "dog ( Classifier: 隻 ／ 只 ..."
+          if (englishWords.length === 0) {
+            let plainText = definition.replace(/<[^>]+>/g, ' ');
+            plainText = decodeHTMLEntities(plainText).trim();
+
+            // Extract text before first Chinese character or opening parenthesis
+            const beforeChineseMatch = plainText.match(/^([^(\u4E00-\u9FFF]+?)[\((\u4E00-\u9FFF]/);
+            if (beforeChineseMatch) {
+              const englishPart = beforeChineseMatch[1].trim();
+              if (englishPart.length > 0 && englishPart.length < 100) {
+                englishWords.push(englishPart);
+              }
+            }
+          }
+
+          if (englishWords.length > 0) {
+            // Extract full meaning text for context
+            let meaningText = definition.replace(/<[^>]+>/g, ' ');
+            meaningText = decodeHTMLEntities(meaningText).trim().replace(/\s+/g, ' ');
+            // Limit meaning text length for readability
+            if (meaningText.length > 200) {
+              meaningText = meaningText.slice(0, 200) + '...';
+            }
+
+            const primaryTranslation = englishWords[0];
+            translations.push({
+              translation: primaryTranslation,
+              meaning: englishWords.join(', ')
+            });
+          }
+        }
+      }
+
+      if (translations.length > 0) {
+        // Chinese character pages don't specify word type in the same way
+        // Default to 'noun' for characters (most common), but could be multiple types
+        result.push({
+          wordType: 'noun',
+          translations
+        });
+
+        // Return early since we found Chinese definitions
+        return result;
+      }
+    }
+  }
 
   // Word types to look for (h3 or h4 depending on whether there's an Etymology section)
   const wordTypes = [
