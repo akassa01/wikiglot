@@ -164,10 +164,11 @@ export function parseEnglishWiktionaryForeignWord(
   const verbFormInfo = detectVerbForm(languageSection);
 
   // SPECIAL HANDLING FOR CHINESE: Many Chinese character pages use "Definitions" section instead of word types
-  // Pattern: <h3 id="Definitions">Definitions</h3> followed by <ol><li>...</li></ol>
+  // Pattern: <h3 id="Definitions">Definitions</h3> OR <h4 id="Definitions">Definitions</h4> followed by <ol><li>...</li></ol>
   // The definitions include English translations embedded in the text
+  // NOTE: Can be h3 OR h4 depending on whether it's nested under Etymology sections
   if (sourceLanguage === 'Chinese') {
-    const definitionsMatch = languageSection.match(/<h3[^>]*id="Definitions"[^>]*>Definitions<\/h3>/i);
+    const definitionsMatch = languageSection.match(/<h[34][^>]*id="Definitions"[^>]*>Definitions<\/h[34]>/i);
     if (definitionsMatch) {
       const defStart = definitionsMatch.index!;
       const restAfterDef = languageSection.slice(defStart + definitionsMatch[0].length);
