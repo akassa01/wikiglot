@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2025-10-15
+
+### Improved
+- **Looser Parsing for Character Pages**: Enhanced parsing logic to be more forgiving and resilient when extracting translations from character-based language pages (Chinese, Japanese)
+  - Improved regex patterns to handle more variations in HTML structure
+  - Better handling of edge cases in definition lists and redirect templates
+  - More robust extraction of English translations from various page formats
+  - Reduces false negatives when page structure doesn't match expected patterns exactly
+
+### Changed
+- Relaxed strict matching requirements in Chinese "Definitions" section parser
+- Updated English word extraction patterns to handle additional HTML variations
+- Enhanced zh-see and ja-see template parsers for better compatibility
+
+### Benefits
+- More reliable translations for rare or less common characters
+- Better handling of pages with non-standard formatting
+- Improved success rate for character-based language translations
+- More resilient to Wiktionary page structure changes
+
 ## [1.2.3] - 2025-10-14
 
 ### Fixed
