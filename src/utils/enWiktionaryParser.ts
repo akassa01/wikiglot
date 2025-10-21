@@ -316,6 +316,14 @@ export function parseEnglishWiktionaryForeignWord(
         definition = definition.replace(/<ol[\s\S]*?<\/ol>/g, '');
         definition = definition.replace(/<ul[\s\S]*?<\/ul>/g, '');
         definition = definition.replace(/<div[\s\S]*?<\/div>/g, '');
+        // Remove <dl> tags which contain synonyms, usage notes, and other metadata
+        definition = definition.replace(/<dl[\s\S]*?<\/dl>/g, '');
+
+        // Skip this item if it doesn't start with a wiki link
+        // (filters out usage examples, quotations, and other non-definition content)
+        if (!/^\s*<a[^>]*href="\/wiki\//.test(definition)) {
+          continue;
+        }
 
         // Extract just the linked words (English translations)
         // Pattern: <a href="/wiki/word">word</a>
@@ -333,15 +341,16 @@ export function parseEnglishWiktionaryForeignWord(
 
         // If we found English words, add them as translations
         if (englishWords.length > 0) {
-          // Use the first English word as the primary translation
-          // and include others as part of the meaning
-          const primaryTranslation = englishWords[0];
+          // Create a separate translation entry for each English word
+          // This ensures all translations are searchable, not just the first one
           const meaning = englishWords.join(', ');
 
-          translations.push({
-            translation: primaryTranslation,
-            meaning: meaning
-          });
+          for (const word of englishWords) {
+            translations.push({
+              translation: word,
+              meaning: meaning
+            });
+          }
         } else {
           // Fallback: extract plain text definition
           let plainDef = definition.replace(/<[^>]+>/g, '');
