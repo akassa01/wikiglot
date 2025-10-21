@@ -96,9 +96,9 @@ interface WordTypeTranslations {
 }
 
 interface Translation {
-  translation: string;
-  transliteration?: string;
-  meaning: string;
+  translation: string;      // The translated word
+  transliteration?: string; // Romanization (for character-based languages)
+  meaning: string;          // Context/definition (helps disambiguate multiple meanings)
 }
 ```
 

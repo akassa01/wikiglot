@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2025-10-21
+
+### Fixed
+- **Synonym Contamination**: Fixed issue where Wiktionary synonyms were being incorrectly included as translations
+  - Problem: When translating words like Italian "ciao", synonyms (salve, buongiorno, arrivederla, etc.) were appearing as translations
+  - Root cause: Wiktionary includes synonyms in `<dl>` (definition list) tags nested within definition `<li>` elements
+  - Solution: Enhanced parser to remove `<dl>` tags (which contain synonyms, usage notes, and metadata) before extracting translations
+  - Also added filter to skip `<li>` items that don't start with wiki links (filters out usage examples and quotations)
+  - Examples now correct:
+    - 🇮🇹 ciao → "hello, goodbye" (previously also included: salve, buongiorno, arrivederla, arrivederci, ci vediamo) ✓
+    - 🇪🇸 hola → "hello" (no unwanted synonyms) ✓
+    - 🇫🇷 bonjour → "greetings, hello, good day, good afternoon" (no unwanted synonyms) ✓
+
+### Improved
+- **Multiple Synonymous Translations**: Enhanced handling of definitions containing multiple synonymous translations
+  - Problem: When a single definition contained multiple translations (e.g., "greetings; hello"), only the first word was searchable
+  - Solution: Parser now creates separate translation entries for each linked word within a definition
+  - Benefit: All translations are now individually searchable, not just the first one
+  - Example: French "bonjour" as a noun now returns both "greetings" and "hello" as separate searchable entries
+  - The `meaning` field still provides context by listing all synonymous translations together
+
+### Changed
+- Modified `parseEnglishWiktionaryForeignWord()` in `enWiktionaryParser.ts` to:
+  - Remove `<dl>` tags before link extraction (line 320)
+  - Skip `<li>` items that don't begin with wiki links (lines 322-326)
+  - Create individual translation entries for each word in multi-word definitions (lines 344-353)
+
+### Technical Details
+- Enhanced HTML cleaning to properly exclude synonym sections marked with `<span class="nyms synonym">`
+- Added validation to ensure only actual definitions (starting with wiki links) are processed
+- Improved separation of definition content from metadata (synonyms, usage notes, quotations)
+
+### Test Results
+- ✅ Italian "ciao": Returns only "hello, goodbye" (no synonyms)
+- ✅ French "bonjour": Now includes "hello" as a searchable translation
+- ✅ Spanish, German, Portuguese: No regressions
+- ✅ All other languages tested: Working correctly
+
+### Examples
+```typescript
+// Before fix: Italian "ciao" incorrectly included synonyms
+const ciao = await translator.translate('ciao', 'it', 'en');
+// Was returning: hello, goodbye, salve, buongiorno, arrivederla, arrivederci, ci vediamo ❌
+
+// After fix: Only actual definitions
+console.log(ciao.translationsByType[0].translations);
+// [{translation: "hello", meaning: "hello"}, {translation: "goodbye", meaning: "goodbye"}] ✓
+
+// Before fix: French "bonjour" missing "hello"
+const bonjour = await translator.translate('bonjour', 'fr', 'en');
+// Was only returning: greetings (with "hello" buried in meaning field) ❌
+
+// After fix: All translations searchable
+console.log(bonjour.translationsByType[0].translations);
+// [
+//   {translation: "greetings", meaning: "greetings, hello"},
+//   {translation: "hello", meaning: "greetings, hello"}
+// ] ✓
+```
+
 ## [1.2.4] - 2025-10-15
 
 ### Improved
