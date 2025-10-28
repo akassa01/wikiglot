@@ -36,8 +36,15 @@ export function parseEnglishWiktionaryForeignWord(
   const result: WordTypeTranslations[] = [];
 
   // Find the language section (h2 heading)
+  // Note: Wiktionary sometimes wraps h2 in divs, so we search flexibly
   const languageSectionRegex = new RegExp(`<h2[^>]*id="${sourceLanguage}"[^>]*>${sourceLanguage}</h2>`, 'i');
-  const langMatch = html.match(languageSectionRegex);
+  let langMatch = html.match(languageSectionRegex);
+
+  // If not found, try a more flexible pattern (for cases where h2 is wrapped in divs)
+  if (!langMatch) {
+    const flexibleRegex = new RegExp(`id="${sourceLanguage}"[\\s\\S]{0,50}?>${sourceLanguage}</h2>`, 'i');
+    langMatch = html.match(flexibleRegex);
+  }
 
   if (!langMatch) {
     return result;
@@ -285,6 +292,12 @@ export function parseEnglishWiktionaryForeignWord(
       match = languageSection.match(typeRegex);
     }
 
+    // If still not found, try flexible pattern (for cases where headers are wrapped in divs)
+    if (!match) {
+      typeRegex = new RegExp(`id="${type.name}[^"]*"[\\s\\S]{0,50}?>${type.name}</h[34]>`, 'i');
+      match = languageSection.match(typeRegex);
+    }
+
     if (!match) continue;
 
     const typeStart = match.index!;
@@ -319,9 +332,10 @@ export function parseEnglishWiktionaryForeignWord(
         // Remove <dl> tags which contain synonyms, usage notes, and other metadata
         definition = definition.replace(/<dl[\s\S]*?<\/dl>/g, '');
 
-        // Skip this item if it doesn't start with a wiki link
+        // Skip this item if it doesn't contain a wiki link early in the definition
         // (filters out usage examples, quotations, and other non-definition content)
-        if (!/^\s*<a[^>]*href="\/wiki\//.test(definition)) {
+        // Allow for short text before the link (e.g., "to love" in Latin definitions)
+        if (!/^\s*(?:\w+\s+)?<a[^>]*href="\/wiki\//.test(definition)) {
           continue;
         }
 
@@ -407,29 +421,30 @@ function detectVerbForm(languageSection: string): { baseVerb: string; formType: 
   // Common patterns for verb forms in Wiktionary definitions
   // These patterns should match definitions that explicitly state this is a form of another verb
   // Note: Patterns allow HTML tags between words using (?:<[^>]+>|\s)+
+  // Character class includes Latin macrons (āēīōū) and breves (ăĕĭŏŭ) for Latin support
   const verbFormPatterns = [
-    // Matches: "inflection of comer:" or "inflection of manger:"
-    /inflection(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    // Matches: "inflection of comer:" or "inflection of manger:" or "inflection of amō:"
+    /inflection(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "simple past of eat" or "simple past tense of run"
-    /simple(?:<[^>]+>|\s)+past(?:(?:<[^>]+>|\s)+tense)?(?:<[^>]+>|\s)+(?:and(?:<[^>]+>|\s)+past(?:<[^>]+>|\s)+participle(?:<[^>]+>|\s)+)?of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    /simple(?:<[^>]+>|\s)+past(?:(?:<[^>]+>|\s)+tense)?(?:<[^>]+>|\s)+(?:and(?:<[^>]+>|\s)+past(?:<[^>]+>|\s)+participle(?:<[^>]+>|\s)+)?of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "present participle and gerund of run" or "past participle of comer"
-    /(?:present|past)(?:<[^>]+>|\s)+participle(?:(?:<[^>]+>|\s)+and(?:<[^>]+>|\s)+gerund)?(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    /(?:present|past)(?:<[^>]+>|\s)+participle(?:(?:<[^>]+>|\s)+and(?:<[^>]+>|\s)+gerund)?(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "gerund of running"
-    /gerund(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    /gerund(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "first-person singular preterite indicative of hablar"
     // Handles: "first-person", "third-person", "first/third-person", etc.
     // Allows for complex HTML structures like <span><a>first</a><span>/</span><a>third-person</a></span>
-    /(?:first|second|third)(?:[\s\S]{0,150}?person)[\s\S]{1,200}?(?:singular|plural)[\s\S]{1,150}?(?:present|past|future|imperfect|preterite|conditional|subjunctive|imperative)[\s\S]{1,150}?(?:of)[\s\S]{1,50}?(?:<[^>]+>)*([a-zA-Záéíóúñü]+)/i,
+    /(?:first|second|third)(?:[\s\S]{0,150}?person)[\s\S]{1,200}?(?:singular|plural)[\s\S]{1,150}?(?:present|past|future|imperfect|preterite|conditional|subjunctive|imperative)[\s\S]{1,150}?(?:of)[\s\S]{1,50}?(?:<[^>]+>)*([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "past tense of go" or "past participle of see"
-    /past(?:<[^>]+>|\s)+(?:tense|participle)(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    /past(?:<[^>]+>|\s)+(?:tense|participle)(?:<[^>]+>|\s)+of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
 
     // Matches: "present tense of goes"
-    /present(?:<[^>]+>|\s)+(?:tense)?(?:<[^>]+>|\s)*of(?:<[^>]+>|\s)+([a-zA-Záéíóúñü]+)/i,
+    /present(?:<[^>]+>|\s)+(?:tense)?(?:<[^>]+>|\s)*of(?:<[^>]+>|\s)+([a-zA-Záéíóúñüāēīōūăĕĭŏŭ]+)/i,
   ];
 
   for (const pattern of verbFormPatterns) {

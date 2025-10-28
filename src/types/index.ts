@@ -2,6 +2,23 @@ export interface Translation {
   translation: string;
   transliteration?: string;
   meaning: string;
+  // Latin-specific inflection forms (4 principal parts)
+  latinVerbForms?: {
+    firstPersonPresent: string;     // amō - 1st person singular present
+    infinitive?: string;             // amāre - present infinitive
+    firstPersonPerfect?: string;     // amāvī - 1st person singular perfect
+    supine?: string;                 // amātum - supine
+  };
+  latinNounForms?: {
+    nominative: string;
+    genitive?: string;
+    gender?: string;
+  };
+  latinAdjectiveForms?: {
+    masculine: string;
+    feminine?: string;
+    neuter?: string;
+  };
 }
 
 export interface TranslationWithMeaning {

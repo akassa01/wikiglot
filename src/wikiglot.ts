@@ -7,6 +7,7 @@ import { extractPronunciation } from "./utils/pronunciationParser";
 import { parseWiktionaryTranslationsByType, detectTranslationRedirect, parseTranslationRedirectPage } from "./utils/htmlParser";
 import { LANGUAGE_NAMES } from "./utils/languageConfig";
 import { extractHeadwordTransliteration } from "./utils/headwordParser";
+import { extractLatinVerbForms, extractLatinNounForms, extractLatinAdjectiveForms } from "./utils/latinHeadwordParser";
 
 interface WiktionaryResponse {
   parse?: {
@@ -270,6 +271,50 @@ export class Wikiglot {
             }
           } catch (error) {
             // Continue without base verb translations
+          }
+        }
+      }
+    }
+
+    // Extract Latin inflection forms when translating English → Latin
+    if (sourceLanguage === 'en' && targetLanguage === 'la') {
+      for (const wordTypeGroup of translationsByType) {
+        for (const translation of wordTypeGroup.translations) {
+          try {
+            // Fetch the Latin word's page
+            const latinWord = translation.translation.replace(/\s+/g, '_');
+            const latinFetchResult = await this.fetch(latinWord);
+            const latinHtml = latinFetchResult.response.parse?.text["*"] || "";
+
+            // Find the Latin language section
+            const latinSectionMatch = latinHtml.match(/<h2[^>]*id="Latin"[^>]*>Latin<\/h2>([\s\S]*?)(?=<h2[^>]*id="[^"]*"|$)/i);
+            if (!latinSectionMatch) continue;
+
+            const latinSection = latinSectionMatch[0];
+
+            // Try to extract based on word type
+            if (wordTypeGroup.wordType === 'verb') {
+              // Extract verb principal parts
+              const verbForms = extractLatinVerbForms(latinSection, latinWord);
+              if (verbForms) {
+                translation.latinVerbForms = verbForms;
+              }
+            } else if (wordTypeGroup.wordType === 'noun') {
+              // Extract noun forms (nominative, genitive, gender)
+              const nounForms = extractLatinNounForms(latinSection, latinWord);
+              if (nounForms) {
+                translation.latinNounForms = nounForms;
+              }
+            } else if (wordTypeGroup.wordType === 'adjective') {
+              // Extract adjective forms (m, f, n)
+              const adjectiveForms = extractLatinAdjectiveForms(latinSection, latinWord);
+              if (adjectiveForms) {
+                translation.latinAdjectiveForms = adjectiveForms;
+              }
+            }
+          } catch (error) {
+            // Continue without Latin inflection data if fetch fails
+            // This allows translations to still work even if individual Latin pages fail
           }
         }
       }
