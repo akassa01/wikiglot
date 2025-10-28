@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-28
+
+### Added
+- **Latin Language Support**: Added full support for Latin (language code `la`)
+  - **Bidirectional translation**: Both English↔Latin directions fully supported
+  - Automatic extraction of verb principal parts:
+    - 1st person singular present (e.g., amō)
+    - Present infinitive (e.g., amāre)
+    - 1st person singular perfect (e.g., amāvī)
+    - Supine (e.g., amātum)
+  - Automatic extraction of noun forms:
+    - Nominative form
+    - Genitive form
+    - Gender (m/f/n)
+  - Automatic extraction of adjective forms:
+    - Masculine form
+    - Feminine form
+    - Neuter form
+  - Latin inflection data is automatically attached to English→Latin translations
+  - Example: `translate('love', 'en', 'la')` now returns all 4 principal parts for "amo"
+  - Example: `translate('amo', 'la', 'en')` returns "love"
+- New utility module: `src/utils/latinHeadwordParser.ts` for extracting Latin grammatical forms
+- Extended character class support in verb form detection to include Latin diacritics (macrons: āēīōū, breves: ăĕĭŏŭ)
+- New test suite: `examples/test-latin.ts` demonstrating all Latin features
+
+### Changed
+- Updated language count from 14 to 15 languages
+- Updated README with Latin examples and documentation
+- Updated package.json keywords to include Latin-related terms (declension, conjugation, inflection)
+
+### Fixed
+- **Wiktionary HTML Structure Changes**: Enhanced parser to handle wrapped heading tags
+  - Wiktionary now wraps h2 and h3/h4 tags in `<div class="mw-heading">` containers
+  - Added flexible regex patterns that work with both wrapped and unwrapped headings
+  - Ensures compatibility with current and future Wiktionary HTML structure changes
+  - Affects all languages, not just Latin
+- **Definition Link Detection**: Improved definition filter to allow short words before links
+  - Previous filter required definitions to start immediately with a link
+  - Now allows words like "to" before the link (e.g., "to love" in Latin definitions)
+  - Maintains filtering of usage examples and quotations while supporting more definition formats
+
 ## [1.2.5] - 2025-10-21
 
 ### Fixed

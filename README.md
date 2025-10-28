@@ -1,10 +1,11 @@
 # Wikiglot
 
-Simple, fast translation library using English Wiktionary with support for 14 languages.
+Simple, fast translation library using English Wiktionary with support for 15 languages.
 
 ## Features
 
-- ✅ Translate between English and 13 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese, Japanese)
+- ✅ Translate between English and 14 other languages (Spanish, French, Italian, German, Portuguese, Swedish, Indonesian, Swahili, Turkish, Arabic, Korean, Chinese, Japanese, **Latin**)
+- ✅ **Latin inflection forms** - Automatic extraction of verb principal parts, noun declensions, and adjective forms
 - ✅ **Headword transliteration** - Automatic romanization extraction for character-based languages (Arabic, Korean, Chinese, Japanese)
 - ✅ **Automatic accent correction** - Forgiving search that finds "azúcar" when you type "azucar"
 - ✅ Automatic verb form detection and base verb translation
@@ -103,6 +104,40 @@ interface Translation {
 ```
 
 ## Examples
+
+### Latin with Inflection Forms
+
+Wikiglot automatically extracts Latin grammatical forms:
+
+```typescript
+// Verb: Returns 4 principal parts
+const verbResult = await translator.translate('love', 'en', 'la');
+console.log(verbResult.translationsByType[0].translations[0].latinVerbForms);
+// {
+//   firstPersonPresent: 'amō',     // 1st person singular present
+//   infinitive: 'amāre',           // present infinitive
+//   firstPersonPerfect: 'amāvī',   // 1st person singular perfect
+//   supine: 'amātum'               // supine
+// }
+
+// Noun: Returns nominative, genitive, and gender
+const nounResult = await translator.translate('water', 'en', 'la');
+console.log(nounResult.translationsByType[0].translations[0].latinNounForms);
+// {
+//   nominative: 'aqua',
+//   genitive: 'aquae',
+//   gender: 'f'
+// }
+
+// Adjective: Returns masculine, feminine, and neuter forms
+const adjResult = await translator.translate('human', 'en', 'la');
+console.log(adjResult.translationsByType[0].translations[0].latinAdjectiveForms);
+// {
+//   masculine: 'hūmānus',
+//   feminine: 'hūmāna',
+//   neuter: 'hūmānum'
+// }
+```
 
 ### Verb Form Detection
 
@@ -272,6 +307,7 @@ await translator.translate('world', 'en', 'fr');
 - Korean (`ko`) - with automatic romanization
 - Mandarin Chinese (`zh`) - with automatic Pinyin romanization
 - Japanese (`ja`) - with automatic romaji romanization
+- **Latin (`la`)** - with automatic extraction of verb principal parts, noun declensions, and adjective forms
 
 **Note:** Currently, one of the languages must be English (source or target) as the library uses English Wiktionary.
 
